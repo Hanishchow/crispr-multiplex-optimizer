@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "crispr-multiplex-optimizer"
+version = "0.1.0"
+description = "Optimize simultaneous CRISPR edits with ML predictions + delivery constraints"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "AI Engineer", email = "ai@example.com"}
+]
+keywords = ["crispr", "genome-editing", "machine-learning", "multiplexing"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+dependencies = [
+    "numpy",
+    "pandas",
+    "click",
+    "streamlit",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "black",
+    "ruff",
+]
+
+[project.scripts]
+crispr-mux = "crispr_mux.cli:cli"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["crispr_mux*"]
+
+[tool.black]
+line-length = 88
+
+[tool.ruff]
+line-length = 88
