@@ -1,48 +1,62 @@
 #!/usr/bin/env python3
 """
-Streamlit Web Interface for CRISPR Multiplexing Optimizer
+CRISPR Multiplexing Optimizer v0.2.0
+Optimize simultaneous CRISPR edits with ML predictions + Doench scoring.
 """
 
 import streamlit as st
 import pandas as pd
-from crispr_mux import CRISPRMultiplexOptimizer
+from crispr_mux import CRISPRMultiplexOptimizer, GuideRNA, save_designs
 
 
-st.set_page_config(page_title="CRISPR Multiplex Optimizer", page_icon="🧬")
-
-st.title("🧬 CRISPR Multiplexing Optimizer")
-st.markdown(
-    "Optimize simultaneous CRISPR edits with ML predictions + delivery constraints"
+st.set_page_config(
+    page_title="CRISPR Multiplex Optimizer v0.2", page_icon="🧬", layout="wide"
 )
 
+st.title("🧬 CRISPR Multiplexing Optimizer")
+st.markdown("**v0.2.0** — ML-powered with Doench + off-target risk scoring")
 
-# Input section
+
+# Sidebar
 with st.sidebar:
-    st.header("Configuration")
+    st.header("⚙️ Configuration")
 
     delivery = st.selectbox(
         "Delivery Method",
-        ["lnp", "aav", "lipofection", "electroporation"],
+        ["lnp", "aav", "lipofection", "electroporation", "lentivirus"],
         help="Viral vector or lipid nanoparticle delivery",
     )
 
     cell_type = st.text_input("Cell Type", "HEK293")
-
     max_sites = st.slider("Max Guides", 4, 50, 20)
 
     st.divider()
 
     st.markdown("**Delivery Capacities:**")
     st.caption(
-        "• LNP: 50 guides  \n• AAV: 4 guides  \n• Lipofection: 20 guides  \n• Electroporation: 30 guides"
+        "• LNP: 50 guides  \n"
+        "• Lentivirus: 10 guides  \n"
+        "• AAV: 4 guides  \n"
+        "• Lipofection: 20 guides  \n"
+        "• Electroporation: 30 guides"
+    )
+
+    st.divider()
+
+    st.markdown("**Scoring Features:**")
+    st.caption(
+        "• Doench score (on-target efficiency)  \n"
+        "• Off-target risk  \n"
+        "• GC content + seed analysis  \n"
+        "• PAMproximal bonuses"
     )
 
 
 # Main input
 targets_text = st.text_area(
-    "Target Genes (one per line)",
-    placeholder="TP53\nKRAS\nEGFR\nBRCA1\nBRCA2",
-    height=150,
+    "🎯 Target Genes (one per line)",
+    placeholder="TP53\nKRAS\nEGFR\nBRCA1\nBRCA2\nMYC",
+    height=180,
 )
 
 
@@ -63,35 +77,36 @@ if st.button("🔬 Generate Designs", type="primary"):
 
             ranked = optimizer.rank_designs(designs)
 
-            st.success(f"Generated {len(designs)} designs")
+            st.success(f"✓ Generated {len(designs)} designs")
 
-            for design, score in ranked:
+            # Display ranked designs
+            for i, (design, score) in enumerate(ranked):
                 with st.expander(
-                    f"📦 {design.name} — Score: {score:.2f}", expanded=True
+                    f"📦 #{i + 1} {design.name} — Score: {score:.2f}", expanded=i == 0
                 ):
                     # Metrics
-                    c1, c2, c3 = st.columns(3)
+                    c1, c2, c3, c4 = st.columns(4)
                     c1.metric("Guides", len(design.guides))
-                    c2.metric("Efficiency", f"{design.efficiency:.1%}")
-                    c3.metric("Valid", "✓" if design.is_valid else "✗")
+                    c2.metric("Efficiency", f"{design.efficiency:.0%}")
+                    c3.metric("Safety", f"{design.safety_score:.0%}")
+                    c4.metric("Valid", "✓" if design.is_valid else "✗")
 
-                    # Table
+                    # Detailed table
                     data = []
                     for g in design.guides:
                         data.append(
                             {
                                 "Gene": g.target_gene,
-                                "Sequence": g.sequence,
-                                "Doench Score": f"{g.on_target_score:.2f}",
+                                "Sequence": g.sequence[:20],
+                                "Doench": f"{g.doench_score():.2f}",
+                                "GC%": f"{g.gc_content:.0%}",
+                                "Off-Target Risk": f"{g.off_target_risk():.2f}",
                             }
                         )
 
                     st.dataframe(pd.DataFrame(data), use_container_width=True)
 
                     # Download
-                    import json
-                    import pandas as pd
-
                     csv = pd.DataFrame(data).to_csv(index=False)
                     st.download_button(
                         "📥 Download CSV",
@@ -100,12 +115,41 @@ if st.button("🔬 Generate Designs", type="primary"):
                         "text/csv",
                     )
 
+            # Validation section
+            st.divider()
+            st.subheader("🔬 Validation")
 
-# Info section
+            validation = optimizer.validate_designs(designs)
+            for d in validation["designs"][:2]:
+                with st.expander(f"Validate {d['name']}"):
+                    for g in d["guide_validations"]:
+                        st.caption(
+                            f"**{g['gene']}**: {g['off_targets']} off-targets "
+                            f"({g['confidence']} confidence)"
+                        )
+
+
+# Info
 st.divider()
-st.markdown("""
-**Innovation:** No existing tool handles 50+ site multiplexing with ML predictions + delivery constraints.
+col1, col2 = st.columns(2)
 
-**Stack:** Python | PyTorch RL (DQN) | OR-Tools  
-**Status:** MVP — needs trained RL model for production
-""")
+with col1:
+    st.markdown("""
+    **Innovation:**
+    First tool to combine:
+    - Doench scoring (on-target)
+    - Off-target risk estimation
+    - Multiplex delivery constraints
+    - Composite ranking
+    """)
+
+with col2:
+    st.markdown("""
+    **Next Steps:**
+    1. Train RL model on published data
+    2. Add GUIDE-seq validation
+    3. Integrate with Benchling API
+    """)
+
+st.markdown("---")
+st.caption("Built with gstack workflow | v0.2.0")
