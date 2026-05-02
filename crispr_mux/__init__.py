@@ -283,7 +283,7 @@ class ValidationData:
             {
                 "chrom": "chr22",
                 "start": 42134456,
-                "start": 42134478,
+                "end": 42134478,
                 "reads": 156,
                 "gene": "STK11",
             },
